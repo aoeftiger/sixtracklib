@@ -80,6 +80,10 @@ target_include_directories(
     sixtrack PUBLIC $<INSTALL_INTERFACE:include>
                     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> )
 
+if( SIXTRACKL_ENABLE_CUDA AND SIXTRACKL_CUDA_INCLUDE_DIRS )
+   target_include_directories( sixtrack PUBLIC $<BUILD_INTERFACE:${SIXTRACKL_CUDA_INCLUDE_DIRS}> )
+endif()
+
 set_target_properties( sixtrack PROPERTIES LINKER_LANGUAGE C )
 set_target_properties( sixtrack PROPERTIES POSITION_INDEPENDENT_CODE ON )
 set_target_properties( sixtrack PROPERTIES C_STANDARD 99 )

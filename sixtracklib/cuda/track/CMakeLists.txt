@@ -29,7 +29,8 @@ target_compile_definitions( sixtrack_cuda_cxx_track
     PUBLIC ${SIXTRACKLIB_NAMESPACE_FLAGS} )
 
 target_include_directories( sixtrack_cuda_cxx_track
-    PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> )
+    PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> 
+    PRIVATE $<BUILD_INTERFACE:${SIXTRACKL_CUDA_INCLUDE_DIRS}> )
 
 set_target_properties( sixtrack_cuda_cxx_track PROPERTIES
     POSITION_INDEPENDENT_CODE ON LINKER_LANGUAGE C 

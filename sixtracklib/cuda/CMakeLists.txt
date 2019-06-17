@@ -64,7 +64,8 @@ target_compile_definitions( sixtrack_cuda_host
     PUBLIC ${SIXTRACKL_CUDA_HOST_DEFINITIONS} )
 
 target_include_directories( sixtrack_cuda_host
-    PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}> )
+    PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    PUBLIC $<BUILD_INTERFACE:${SIXTRACKL_CUDA_INCLUDE_DIRS}> )
 
 set_target_properties( sixtrack_cuda_host PROPERTIES POSITION_INDEPENDENT_CODE ON )
 set_target_properties( sixtrack_cuda_host PROPERTIES LINKER_LANGUAGE C )
@@ -148,7 +149,9 @@ set_target_properties( sixtrack_cuda_device PROPERTIES CUDA_RESOLVE_DEVICE_SYMBO
 set_target_properties( sixtrack_cuda_device PROPERTIES CUDA_STANDARD 11 )
 set_target_properties( sixtrack_cuda_device PROPERTIES CUDA_STANDARD_REQUIRED 11 )
 
-target_include_directories( sixtrack_cuda_device PRIVATE ${CMAKE_SOURCE_DIR} )
+target_include_directories( sixtrack_cuda_device 
+	PRIVATE $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        PUBLIC $<BUILD_INTERFACE:${SIXTRACKL_CUDA_INCLUDE_DIRS}> )
 
 # ------------------------------------------------------------------------------
 # pass on sixtrack_cuda_device as a module for sixtracklib:

@@ -31,6 +31,12 @@ target_include_directories( sixtrack_common_track_cxx PRIVATE
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include> )
 
+if( SIXTRACKL_ENABLE_CUDA )
+    target_include_directories( sixtrack_common_track_cxx PRIVATE
+        $<BUILD_INTERFACE:${SIXTRACKL_CUDA_INCLUDE_DIRS}> )
+
+endif()
+
 set_target_properties( sixtrack_common_track_cxx PROPERTIES
     POSITION_INDEPENDENT_CODE ON LINKER_LANGUAGE C
     CXX_STANDARD 11 CXX_STANDARD_REQUIRED ON )
