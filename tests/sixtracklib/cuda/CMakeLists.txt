@@ -3,6 +3,8 @@
 
 message( STATUS "---- processing tests/sixtracklib/cuda/CMakeLists.txt" )
 
+include_directories( ${SIXTRACKL_CUDA_INCLUDE_DIRS} )
+
 # ==============================================================================
 # Setup compilation options and parameters:
 
