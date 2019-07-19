@@ -7,6 +7,8 @@
 
 #include "sixtracklib/common/definitions.h"
 #include "sixtracklib/common/particles.hpp"
+#include "sixtracklib/common/be_monitor/be_monitor.hpp"
+#include "sixtracklib/common/output/output_buffer.h"
 #include "sixtracklib/common/track/track_job_base.hpp"
 #include "sixtracklib/common/track/track_job_ctrl_arg_base.hpp"
 #include "sixtracklib/common/track/track_job_nodectrl_arg_base.hpp"
@@ -101,7 +103,9 @@ namespace SIXTRL_CXX_NAMESPACE
             using buffer_t            = track_job_t::buffer_t;
             using size_t              = track_job_t::size_type;
             using elem_by_elem_conf_t = track_job_t::elem_by_elem_config_t;
+            using status_t            = st::ctrl_status_t;
             using particles_t         = st::Particles;
+            using pindex_t            = particles_t::index_t;
 
             buffer_t const* output_buffer = nullptr;
             elem_by_elem_conf_t const* elem_by_elem_conf = nullptr;
@@ -150,6 +154,53 @@ namespace SIXTRL_CXX_NAMESPACE
                             * until_turn_elem_by_elem ) ) &&
                     ( ::NS(ElemByElemConfig_is_rolling)( elem_by_elem_conf ) ==
                       job.defaultElemByElemRolling() ) );
+            }
+
+            if( success )
+            {
+                success = false;
+
+                pindex_t min_particle_id   = pindex_t{ 0 };
+                pindex_t max_particle_id   = pindex_t{ 0 };
+                pindex_t min_at_element_id = pindex_t{ 0 };
+                pindex_t max_at_element_id = pindex_t{ 0 };
+                pindex_t min_at_turn_id    = pindex_t{ 0 };
+                pindex_t max_at_turn_id    = pindex_t{ 0 };
+
+                size_t num_elem_by_elem_objs = size_t{ 0 };
+                pindex_t const start_elem_id = pindex_t{ 0 };
+
+                status_t const status =
+                    ::NS(OutputBuffer_get_min_max_attributes_on_particle_sets)(
+                        particles_buffer.getCApiPtr(), num_psets,
+                        pset_indices_begin, beam_elements_buffer.getCApiPtr(),
+                        &min_particle_id, &max_particle_id, &min_at_element_id,
+                        &max_at_element_id, &min_at_turn_id, &max_at_turn_id,
+                        &num_elem_by_elem_objs, start_elem_id );
+
+                if( ( status == st::ARCH_STATUS_SUCCESS ) &&
+                    ( min_particle_id <= max_particle_id ) &&
+                    ( min_at_element_id <= max_at_element_id ) &&
+                    ( min_at_turn_id <= max_at_turn_id ) &&
+                    ( num_elem_by_elem_objs > size_t{ 0 } ) )
+                {
+                    elem_by_elem_conf = job.ptrElemByElemConfig();
+                    SIXTRL_ASSERT( elem_by_elem_conf != nullptr );
+
+                    success = (
+                        ( ::NS(ElemByElemConfig_get_min_particle_id)(
+                            elem_by_elem_conf ) == min_particle_id ) &&
+                        ( ::NS(ElemByElemConfig_get_max_particle_id)(
+                            elem_by_elem_conf ) == max_particle_id ) &&
+                        ( ::NS(ElemByElemConfig_get_min_element_id)(
+                            elem_by_elem_conf ) == min_at_element_id ) &&
+                        ( ::NS(ElemByElemConfig_get_max_element_id)(
+                            elem_by_elem_conf ) == max_at_element_id ) &&
+                        ( ::NS(ElemByElemConfig_get_min_turn)(
+                            elem_by_elem_conf ) == min_at_turn_id ) &&
+                        ( ::NS(ElemByElemConfig_get_max_turn)(
+                            elem_by_elem_conf ) >= max_at_turn_id ) );
+                }
             }
 
             if( success )
@@ -212,7 +263,37 @@ namespace SIXTRL_CXX_NAMESPACE
             using buffer_t            = track_job_t::buffer_t;
             using size_t              = track_job_t::size_type;
             using elem_by_elem_conf_t = track_job_t::elem_by_elem_config_t;
+            using status_t            = st::ctrl_status_t;
             using particles_t         = st::Particles;
+            using pindex_t            = particles_t::index_t;
+            using be_monitor_t        = st::BeamMonitor;
+
+            pindex_t min_particle_id   = pindex_t{ 0 };
+            pindex_t max_particle_id   = pindex_t{ 0 };
+            pindex_t min_at_element_id = pindex_t{ 0 };
+            pindex_t max_at_element_id = pindex_t{ 0 };
+            pindex_t min_at_turn_id    = pindex_t{ 0 };
+            pindex_t max_at_turn_id    = pindex_t{ 0 };
+
+            size_t num_elem_by_elem_objs = size_t{ 0 };
+            pindex_t const start_elem_id = pindex_t{ 0 };
+
+            status_t status =
+                ::NS(OutputBuffer_get_min_max_attributes_on_particle_sets)(
+                    particles_buffer.getCApiPtr(), num_psets,
+                    pset_indices_begin, beam_elements_buffer.getCApiPtr(),
+                    &min_particle_id, &max_particle_id, &min_at_element_id,
+                    &max_at_element_id, &min_at_turn_id, &max_at_turn_id,
+                    &num_elem_by_elem_objs, start_elem_id );
+
+            if( ( status != st::ARCH_STATUS_SUCCESS ) ||
+                ( min_particle_id > max_particle_id ) ||
+                ( min_at_element_id > max_at_element_id ) ||
+                ( min_at_turn_id > max_at_turn_id ) ||
+                ( num_elem_by_elem_objs == size_t{ 0 } ) )
+            {
+                return false;
+            }
 
             buffer_t const* output_buffer = nullptr;
             elem_by_elem_conf_t const* elem_by_elem_conf = nullptr;
@@ -259,9 +340,17 @@ namespace SIXTRL_CXX_NAMESPACE
                 {
                     for( ; be_mon_idx_it != be_mon_idx_end ; ++be_mon_idx_it )
                     {
-                        if( ::NS(OBJECT_TYPE_BEAM_MONITOR) !=
-                            ::NS(Object_get_type_id)(
-                                beam_elements_buffer[ *be_mon_idx_it ] ) )
+                        be_monitor_t const* mon = beam_elements_buffer.get<
+                            be_monitor_t >( *be_mon_idx_it );
+
+                        if( mon == nullptr )
+                        {
+                            success = false;
+                            break;
+                        }
+
+                        if( ( mon->getMinParticleId() != min_particle_id ) ||
+                            ( mon->getMaxParticleId() != max_particle_id ) )
                         {
                             success = false;
                             break;
@@ -287,6 +376,28 @@ namespace SIXTRL_CXX_NAMESPACE
                             * until_turn_elem_by_elem ) ) &&
                     ( ::NS(ElemByElemConfig_is_rolling)( elem_by_elem_conf ) ==
                        job.defaultElemByElemRolling() ) );
+            }
+
+            if( ( success ) && ( job.hasElemByElemOutput() ) )
+            {
+                success = false;
+
+                auto conf = job.ptrElemByElemConfig();
+                SIXTRL_ASSERT( elem_by_elem_conf != nullptr );
+
+                success = (
+                    ( ::NS(ElemByElemConfig_get_min_particle_id)( conf ) ==
+                        min_particle_id ) &&
+                    ( ::NS(ElemByElemConfig_get_max_particle_id)( conf ) ==
+                        max_particle_id ) &&
+                    ( ::NS(ElemByElemConfig_get_min_element_id)( conf ) ==
+                        min_at_element_id ) &&
+                    ( ::NS(ElemByElemConfig_get_max_element_id)( conf ) ==
+                        max_at_element_id ) &&
+                    ( ::NS(ElemByElemConfig_get_min_turn)( conf ) ==
+                        min_at_turn_id ) &&
+                    ( ::NS(ElemByElemConfig_get_max_turn)( conf ) >=
+                        max_at_turn_id ) );
             }
 
             if( ( success ) &&
