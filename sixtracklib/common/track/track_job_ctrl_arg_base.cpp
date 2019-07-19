@@ -354,13 +354,13 @@ namespace SIXTRL_CXX_NAMESPACE
     }
 
     /* --------------------------------------------------------------------- */
-    
-    TrackJobCtrlArgBase::status_t 
+
+    TrackJobCtrlArgBase::status_t
     TrackJobCtrlArgBase::doClearParticleAddresses(
             TrackJobCtrlArgBase::size_type const index )
     {
         TrackJobCtrlArgBase::status_t status = st::ARCH_STATUS_GENERAL_FAILURE;
-        
+
         if( ( this->ptrParticlesAddrArgBase() != nullptr ) &&
             ( this->ptrParticlesAddrArgBase()->usesCObjectsCxxBuffer() ) &&
             ( this->doGetPtrParticlesAddrBuffer() != nullptr ) &&
@@ -369,45 +369,45 @@ namespace SIXTRL_CXX_NAMESPACE
         {
             using _this_t = TrackJobCtrlArgBase;
             using _base_t = _this_t::_base_track_job_t;
-            
+
             /* NOTE: If the architecture we are working on requires collecting,
-             *       we collect first *all* particle addresses before 
-             *       attempting to clear the single particle address that is 
-             *       pertinent to this call. Then, we (always) send the 
+             *       we collect first *all* particle addresses before
+             *       attempting to clear the single particle address that is
+             *       pertinent to this call. Then, we (always) send the
              *       result via the argument.
-             * 
-             *       This is obviously not optimal but should work in most 
-             *       circumstances. If not suitable for a deriving implementation, 
-             *       onus is on the corresponding implementation to specialize 
+             *
+             *       This is obviously not optimal but should work in most
+             *       circumstances. If not suitable for a deriving implementation,
+             *       onus is on the corresponding implementation to specialize
              *       this function accordingly */
-            
+
             status = st::ARCH_STATUS_SUCCESS;
-            
+
             if( this->requiresCollecting() )
             {
                 status = this->collectParticlesAddresses();
             }
-            
+
             if( status == st::ARCH_STATUS_SUCCESS )
             {
                 status = _base_t::doClearParticleAddresses( index );
             }
-            
+
             if( status == st::ARCH_STATUS_SUCCESS )
             {
                 status = this->ptrParticlesAddrArgBase()->send(
                     *this->doGetPtrParticlesAddrBuffer() );
             }
         }
-        
+
         return status;
     }
-            
-    TrackJobCtrlArgBase::status_t 
+
+    TrackJobCtrlArgBase::status_t
     TrackJobCtrlArgBase::doClearAllParticleAddresses()
     {
         TrackJobCtrlArgBase::status_t status = st::ARCH_STATUS_GENERAL_FAILURE;
-        
+
         if( ( this->ptrParticlesAddrArgBase() != nullptr ) &&
             ( this->ptrParticlesAddrArgBase()->usesCObjectsCxxBuffer() ) &&
             ( this->doGetPtrParticlesAddrBuffer() != nullptr ) &&
@@ -416,19 +416,19 @@ namespace SIXTRL_CXX_NAMESPACE
         {
             using _this_t = TrackJobCtrlArgBase;
             using _base_t = _this_t::_base_track_job_t;
-            
+
             status = _base_t::doClearAllParticleAddresses();
-            
+
             if( status == st::ARCH_STATUS_SUCCESS )
             {
                 status = this->ptrParticlesAddrArgBase()->send(
                     *this->doGetPtrParticlesAddrBuffer() );
             }
         }
-        
+
         return status;
     }
-    
+
     /* --------------------------------------------------------------------- */
 
     void TrackJobCtrlArgBase::doClear(
@@ -564,9 +564,9 @@ namespace SIXTRL_CXX_NAMESPACE
             ( this->doGetPtrParticlesAddrBuffer() ==
               this->ptrParticlesAddrArgBase()->ptrCObjectsCxxBuffer() ) )
         {
-            _base_t::buffer_t& particles_addr_buffer = 
+            _base_t::buffer_t& particles_addr_buffer =
                 *this->doGetPtrParticlesAddrBuffer();
-            
+
             status_t const status = this->ptrParticlesAddrArgBase()->receive(
                 particles_addr_buffer );
 
@@ -736,6 +736,30 @@ namespace SIXTRL_CXX_NAMESPACE
         char const* SIXTRL_RESTRICT )
     {
         return st::ARCH_STATUS_SUCCESS;
+    }
+
+    TrackJobCtrlArgBase::status_t
+    TrackJobCtrlArgBase::doPrepareOutputStructures(
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT particles_buffer,
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT beam_elem_buffer,
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT ptr_output_buffer,
+        TrackJobCtrlArgBase::size_type const until_turn_elem_by_elem )
+    {
+        using _this_t = st::TrackJobCtrlArgBase;
+        using _base_t = _this_t::_base_track_job_t;
+
+        _this_t::status_t status = _base_t::doPrepareOutputStructures(
+            particles_buffer, beam_elem_buffer, ptr_output_buffer,
+                until_turn_elem_by_elem );
+
+        if( status == st::ARCH_STATUS_SUCCESS )
+        {
+            status = this->doPrepareOutputStructuresCtrlArgBaseImpl(
+                particles_buffer, beam_elem_buffer, ptr_output_buffer,
+                    until_turn_elem_by_elem );
+        }
+
+        return status;
     }
 
     /* --------------------------------------------------------------------- */
@@ -941,6 +965,39 @@ namespace SIXTRL_CXX_NAMESPACE
         ) SIXTRL_NOEXCEPT
     {
         this->m_stored_controller.reset( nullptr );
+    }
+
+    TrackJobCtrlArgBase::status_t
+    TrackJobCtrlArgBase::doPrepareOutputStructuresCtrlArgBaseImpl(
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT particles_buffer,
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT beam_elem_buffer,
+        TrackJobCtrlArgBase::c_buffer_t* SIXTRL_RESTRICT ptr_output_buffer,
+        TrackJobCtrlArgBase::size_type const until_turn_elem_by_elem )
+    {
+        using _this_t = st::TrackJobCtrlArgBase;
+
+        _this_t::status_t status = st::ARCH_STATUS_SUCCESS;
+
+        if( ( this->ptrCBeamElementsBuffer() != nullptr ) &&
+            ( this->ptrBeamElementsArgBase() != nullptr ) &&
+            ( this->ptrBeamElementsArgBase()->usesCObjectsBuffer() ) &&
+            ( this->hasBeamMonitors() ) )
+        {
+            status = this->ptrBeamElementsArgBase()->send(
+                this->ptrCBeamElementsBuffer() );
+        }
+
+        if( ( status == st::ARCH_STATUS_SUCCESS ) &&
+            ( this->ptrElemByElemConfig() != nullptr ) &&
+            ( this->ptrElemByElemConfigArgBase() != nullptr ) &&
+            ( this->ptrElemByElemConfigArgBase()->usesRawArgument() ) &&
+            ( this->hasElemByElemConfig() ) )
+        {
+            status = this->ptrElemByElemConfigArgBase()->send(
+                this->ptrElemByElemConfig(), sizeof( ::NS(ElemByElemConfig) ) );
+        }
+
+        return status;
     }
 
     /* --------------------------------------------------------------------- */

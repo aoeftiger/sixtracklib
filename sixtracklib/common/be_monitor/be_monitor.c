@@ -13,6 +13,29 @@
     #include "sixtracklib/common/internal/objects_type_id.h"
 #endif /* !defined( SIXTRL_NO_INCLUDES ) */
 
+
+SIXTRL_BE_ARGPTR_DEC NS(BeamMonitor) const*
+NS(BeamMonitor_buffer_get_const_beam_monitor_ext)(
+    SIXTRL_BUFFER_ARGPTR_DEC const NS(Buffer) *const SIXTRL_RESTRICT buffer,
+    NS(buffer_size_t) const be_monitor_index )
+{
+    return NS(BeamMonitor_managed_buffer_get_const_beam_monitor)(
+        NS(Buffer_get_const_data_begin)( buffer ), be_monitor_index,
+        NS(Buffer_get_slot_size)( buffer ) );
+}
+
+SIXTRL_BE_ARGPTR_DEC NS(BeamMonitor)*
+NS(BeamMonitor_buffer_get_beam_monitor_ext)(
+    SIXTRL_BUFFER_ARGPTR_DEC NS(Buffer)* SIXTRL_RESTRICT buffer,
+    NS(buffer_size_t) const be_monitor_index )
+{
+    return NS(BeamMonitor_managed_buffer_get_beam_monitor)(
+        NS(Buffer_get_data_begin)( buffer ), be_monitor_index,
+        NS(Buffer_get_slot_size)( buffer ) );
+}
+
+/* ------------------------------------------------------------------------- */
+
 int NS(BeamMonitor_insert_end_of_turn_monitors_at_pos)(
     SIXTRL_BUFFER_ARGPTR_DEC NS(Buffer)* SIXTRL_RESTRICT belements,
     NS(be_monitor_turn_t) const turn_by_turn_start,

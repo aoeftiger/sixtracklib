@@ -137,10 +137,10 @@ namespace SIXTRL_CXX_NAMESPACE
 
         SIXTRL_HOST_FN virtual void doClearController();
         SIXTRL_HOST_FN virtual void doClearDefaultKernels();
-        
+
         SIXTRL_HOST_FN virtual status_t doClearParticleAddresses(
             size_type const index ) override;
-            
+
         SIXTRL_HOST_FN virtual status_t doClearAllParticleAddresses() override;
 
         SIXTRL_HOST_FN virtual void doClear(
@@ -185,6 +185,12 @@ namespace SIXTRL_CXX_NAMESPACE
 
         SIXTRL_HOST_FN virtual status_t doPrepareDefaultKernels(
             char const* SIXTRL_RESTRICT config_str );
+
+         SIXTRL_HOST_FN virtual status_t doPrepareOutputStructures(
+            c_buffer_t* SIXTRL_RESTRICT particles_buffer,
+            c_buffer_t* SIXTRL_RESTRICT beam_elem_buffer,
+            c_buffer_t* SIXTRL_RESTRICT ptr_output_buffer,
+            size_type const until_turn_elem_by_elem ) override;
 
         /* ----------------------------------------------------------------- */
 
@@ -280,6 +286,12 @@ namespace SIXTRL_CXX_NAMESPACE
 
         SIXTRL_HOST_FN void
         doClearDefaultKernelsCtrlArgBaseImpl() SIXTRL_NOEXCEPT;
+
+        SIXTRL_HOST_FN status_t doPrepareOutputStructuresCtrlArgBaseImpl(
+            c_buffer_t* SIXTRL_RESTRICT particles_buffer,
+            c_buffer_t* SIXTRL_RESTRICT beam_elem_buffer,
+            c_buffer_t* SIXTRL_RESTRICT ptr_output_buffer,
+            size_type const until_turn_elem_by_elem );
 
         /* ---------------------------------------------------------------- */
 

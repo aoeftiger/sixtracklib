@@ -149,6 +149,8 @@ bool NS(TestTrackJob_setup_no_beam_monitors_elem_by_elem)(
     typedef NS(Buffer)              c_buffer_t;
     typedef NS(Particles)           particles_t;
     typedef NS(ElemByElemConfig)    elem_by_elem_conf_t;
+    typedef NS(particle_index_t)    pindex_t;
+    typedef NS(arch_status_t)       status_t;
 
     SIXTRL_STATIC_VAR buf_size_t const ZERO = ( buf_size_t )0u;
     SIXTRL_STATIC_VAR buf_size_t const ONE  = ( buf_size_t )1u;
@@ -205,6 +207,52 @@ bool NS(TestTrackJob_setup_no_beam_monitors_elem_by_elem)(
             ( NS(ElemByElemConfig_is_rolling)( elem_by_elem_conf ) ==
               NS(TrackJobNew_get_default_elem_by_elem_config_rolling_flag)(
                     job ) ) );
+    }
+
+    if( success )
+    {
+        success = false;
+
+        pindex_t min_particle_id   = ( pindex_t )0u;
+        pindex_t max_particle_id   = ( pindex_t )0u;
+        pindex_t min_at_element_id = ( pindex_t )0u;
+        pindex_t max_at_element_id = ( pindex_t )0u;
+        pindex_t min_at_turn_id    = ( pindex_t )0u;
+        pindex_t max_at_turn_id    = ( pindex_t )0u;
+
+        buf_size_t num_elem_by_elem_objs = ZERO;
+        pindex_t const start_elem_id = ( pindex_t )0u;
+
+        status_t const status =
+            NS(OutputBuffer_get_min_max_attributes_on_particle_sets)(
+                particles_buffer, num_psets, pset_indices_begin,
+                beam_elements_buffer, &min_particle_id, &max_particle_id,
+                &min_at_element_id, &max_at_element_id, &min_at_turn_id,
+                &max_at_turn_id, &num_elem_by_elem_objs, start_elem_id );
+
+        if( ( status == NS(ARCH_STATUS_SUCCESS) ) &&
+            ( min_particle_id <= max_particle_id ) &&
+            ( min_at_element_id <= max_at_element_id ) &&
+            ( min_at_turn_id <= max_at_turn_id ) &&
+            ( num_elem_by_elem_objs > ZERO ) )
+        {
+            elem_by_elem_conf = NS(TrackJobNew_get_elem_by_elem_config)( job );
+            SIXTRL_ASSERT( elem_by_elem_conf != SIXTRL_NULLPTR );
+
+            success = (
+                ( NS(ElemByElemConfig_get_min_particle_id)(
+                    elem_by_elem_conf ) == min_particle_id ) &&
+                ( NS(ElemByElemConfig_get_max_particle_id)(
+                    elem_by_elem_conf ) == max_particle_id ) &&
+                ( NS(ElemByElemConfig_get_min_element_id)(
+                    elem_by_elem_conf ) == min_at_element_id ) &&
+                ( NS(ElemByElemConfig_get_max_element_id)(
+                    elem_by_elem_conf ) == max_at_element_id ) &&
+                ( NS(ElemByElemConfig_get_min_turn)(
+                    elem_by_elem_conf ) == min_at_turn_id ) &&
+                ( NS(ElemByElemConfig_get_max_turn)(
+                    elem_by_elem_conf ) >= max_at_turn_id ) );
+        }
     }
 
     if( success )
@@ -277,6 +325,9 @@ bool NS(TestTrackJob_setup_beam_monitors_and_elem_by_elem)(
     typedef NS(Buffer)              c_buffer_t;
     typedef NS(Particles)           particles_t;
     typedef NS(ElemByElemConfig)    elem_by_elem_conf_t;
+    typedef NS(particle_index_t)    pindex_t;
+    typedef NS(arch_status_t)       status_t;
+    typedef NS(BeamMonitor)         be_monitor_t;
 
     SIXTRL_STATIC_VAR buf_size_t const ZERO = ( buf_size_t )0u;
     SIXTRL_STATIC_VAR buf_size_t const ONE  = ( buf_size_t )1u;
@@ -298,12 +349,38 @@ bool NS(TestTrackJob_setup_beam_monitors_and_elem_by_elem)(
     buf_size_t const NUM_PARTICLES =
         NS(Particles_get_num_of_particles)( particles );
 
+    pindex_t min_particle_id   = ( pindex_t )0u;
+    pindex_t max_particle_id   = ( pindex_t )0u;
+    pindex_t min_at_element_id = ( pindex_t )0u;
+    pindex_t max_at_element_id = ( pindex_t )0u;
+    pindex_t min_at_turn_id    = ( pindex_t )0u;
+    pindex_t max_at_turn_id    = ( pindex_t )0u;
+
+    buf_size_t num_elem_by_elem_objs = ZERO;
+    pindex_t const start_elem_id = ( pindex_t )0u;
+
+    status_t status = NS(OutputBuffer_get_min_max_attributes_on_particle_sets)(
+        particles_buffer, num_psets, pset_indices_begin, beam_elements_buffer,
+        &min_particle_id, &max_particle_id, &min_at_element_id,
+        &max_at_element_id, &min_at_turn_id, &max_at_turn_id,
+        &num_elem_by_elem_objs, start_elem_id );
+
+    if( ( status != NS(ARCH_STATUS_SUCCESS) ) ||
+        ( min_particle_id > max_particle_id ) ||
+        ( min_at_element_id > max_at_element_id ) ||
+        ( min_at_turn_id > max_at_turn_id ) ||
+        ( num_elem_by_elem_objs == ZERO ) )
+    {
+        return success;
+    }
+
     success = ( ( job != SIXTRL_NULLPTR ) &&
         ( NUM_BEAM_ELEMENTS > ZERO ) &&
         ( NUM_PARTICLES > ZERO ) &&
         (  NS(TrackJobNew_has_output_buffer)(  job ) ) &&
         (  NS(TrackJobNew_has_beam_monitor_output)( job ) ) &&
         (  NS(TrackJobNew_get_num_beam_monitors)( job ) == num_beam_monitors ) );
+
 
     if( success )
     {
@@ -335,9 +412,24 @@ bool NS(TestTrackJob_setup_beam_monitors_and_elem_by_elem)(
         {
             for( ; be_mon_idx_it != be_mon_idx_end ; ++be_mon_idx_it )
             {
-                success &= ( NS(OBJECT_TYPE_BEAM_MONITOR) ==
-                    NS(Object_get_type_id)( NS(Buffer_get_const_object)(
-                        beam_elements_buffer, *be_mon_idx_it ) ) );
+                be_monitor_t const* mon =
+                NS(BeamMonitor_buffer_get_const_beam_monitor)(
+                    beam_elements_buffer, *be_mon_idx_it );
+
+                if( mon == SIXTRL_NULLPTR )
+                {
+                    success = false;
+                    break;
+                }
+
+                if( ( NS(BeamMonitor_get_min_particle_id)( mon ) !=
+                        min_particle_id ) ||
+                    ( NS(BeamMonitor_get_max_particle_id)( mon ) !=
+                        max_particle_id ) )
+                {
+                    success = false;
+                    break;
+                }
             }
         }
     }
@@ -357,6 +449,28 @@ bool NS(TestTrackJob_setup_beam_monitors_and_elem_by_elem)(
                 ( NUM_PARTICLES * NUM_BEAM_ELEMENTS * until_turn_elem_by_elem ) ) &&
             ( NS(ElemByElemConfig_is_rolling)( elem_by_elem_conf ) ==
               NS(TrackJobNew_get_default_elem_by_elem_config_rolling_flag)( job ) ) );
+    }
+
+    if( ( success ) && ( NS(TrackJobNew_has_elem_by_elem_output)( job ) ) )
+    {
+        success = false;
+
+        elem_by_elem_conf = NS(TrackJobNew_get_elem_by_elem_config)( job );
+        SIXTRL_ASSERT( elem_by_elem_conf != SIXTRL_NULLPTR );
+
+        success = (
+            ( NS(ElemByElemConfig_get_min_particle_id)( elem_by_elem_conf ) ==
+                min_particle_id ) &&
+            ( NS(ElemByElemConfig_get_max_particle_id)( elem_by_elem_conf ) ==
+                max_particle_id ) &&
+            ( NS(ElemByElemConfig_get_min_element_id)( elem_by_elem_conf ) ==
+                min_at_element_id ) &&
+            ( NS(ElemByElemConfig_get_max_element_id)( elem_by_elem_conf ) ==
+                max_at_element_id ) &&
+            ( NS(ElemByElemConfig_get_min_turn)( elem_by_elem_conf ) ==
+                min_at_turn_id ) &&
+            ( NS(ElemByElemConfig_get_max_turn)( elem_by_elem_conf ) >=
+                max_at_turn_id ) );
     }
 
     if( ( success ) &&
